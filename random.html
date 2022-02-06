@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>50languages unofficial player</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+<body class="container">
+
+<h1 class="fs-4 mt-3">50languages unofficial player</h1>
+
+<div class="card container mt-1 mb-3">
+	<div class="fs-6">
+		<select id="slc-lang" class="form-select mt-2 mb-3 fs-6" style="width:30%; display:inline"></select>
+		<button id="btn-play" type="button" class="btn btn-primary btn-lg mt-2 mb-3 fs-6">Play <span id="btn-play-spinner" class="collapse spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
+	</div>
+</div>
+
+<div class="mt-3 pt-3">
+	<h5 class="fs-5 fw-bold">Description:</h5>
+	<p>This web application is for free practice of listening to foreign languages.<br>
+ 	All sound files are property of <a href="https://www.goethe-verlag.com/">Goethe Verlag GmbH</a> and <a href="https://www.50languages.com/">50Languages</a>.<br>
+ 	This is unofficial application, not related to Goethe Verlag GmbH.
+ 	</p>
+
+	<h5 class="fs-5 fw-bold">Credits:</h5>
+	<p><a href="https://www.linkedin.com/in/hassman/">Martin Hassman</a>, programming.<br>
+	Goethe Verlag GmbH, <a href="https://www.50languages.com/">50 Languages project</a> with sound files.
+	</p>
+</div>
+
+<footer class="text-center fst-italic pt-4">
+	<p><a href="https://github.com/met/50languages-unofficial-player">Source code</a> available (MIT License).</p>
+</footer>
+
+
+<script>
+'use strict';
+
+let languages = [
+['AD','адыгабзэ'],
+['AF','Afrikaans'],
+['AM','አማርኛ'],
+['AR','العربية'],
+['BE','беларуская'],
+['BG','български'],
+['BN','বাংলা'],
+['BS','bosanski'],
+['CA','català'],
+['CS','čeština'],
+['DA','dansk'],
+['DE','Deutsch'],
+['EL','ελληνικά'],
+['EM','English US'],
+['EN','English UK'],
+['EO','esperanto'],
+['ES','español'],
+['ET','eesti'],
+['FA','فارسی'],
+['FI','suomi'],
+['FR','français'],
+['HE','עברית'],
+['HI','हिन्दी'],
+['HR','hrvatski'],
+['HU','magyar'],
+['HY','հայերեն'],
+['ID','bahasa Indonesia'],
+['IT','italiano'],
+['JA','日本語'],
+['KA','ქართული'],
+['KK','қазақша'],
+['KN','ಕನ್ನಡ'],
+['KO','한국어'],
+['LT','lietuvių'],
+['LV','latviešu'],
+['MK','македонски'],
+['MR','मराठी'],
+['NL','Nederlands'],
+['NN','nynorsk'],
+['NO','norsk'],
+['PA','ਪੰਜਾਬੀ'],
+['PL','polski'],
+['PT','português PT'],
+['PX','português BR'],
+['RO','română'],
+['RU','русский'],
+['SK','slovenčina'],
+['SL','slovenščina'],
+['SQ','Shqip'],
+['SR','српски'],
+['SV','svenska'],
+['TA','தமிழ்'],
+['TE','తెలుగు'],
+['TH','ภาษาไทย'],
+['TI','ትግርኛ'],
+['TR','Türkçe'],
+['UK','українська'],
+['UR','اردو'],
+['VI','Tiếng Việt'],
+['ZH','中文'],
+];
+
+
+function populateLanguageSelect(selectId, languages) {
+	let selectEl = document.getElementById(selectId);
+
+	for (let n in languages) {
+		let langCode = languages[n][0];
+		let langText = languages[n][1];
+
+		let optEl = document.createElement('option');
+		optEl.textContent = `${langCode} - ${langText}`;
+		optEl.value = langCode;
+
+		selectEl.appendChild(optEl);
+	}
+}
+
+function setLangSelectHandler(selectId) {
+	let selectEl = document.getElementById(selectId);
+
+	selectEl.addEventListener('change', function(event) {
+		localStorage.setItem('selectedLanguage', event.target.value);
+	});
+}
+
+// Load last selected language. Otherwise set default
+function setLastLanguage(selectId) {
+	const DEFAULT_LANGUAGE = 'EN';
+	let selectEl = document.getElementById(selectId);
+
+	let lastLanguage = localStorage.getItem('selectedLanguage');
+
+	if (lastLanguage) {
+		selectEl.value = lastLanguage;		
+	}
+	else {
+		selectEl.value = DEFAULT_LANGUAGE;
+	}
+}
+
+function setPlayHandler(btnId) {
+
+	let btnEl = document.getElementById(btnId);
+
+	btnEl.addEventListener('click', function(event) {
+		//let sounds = ['https://www.book2.nl/book2/VI/SOUND/0001.mp3', 'https://www.book2.nl/book2/VI/SOUND/0002.mp3', 'https://www.book2.nl/book2/VI/SOUND/0003.mp3'];
+
+		let lang = document.getElementById('slc-lang').value;
+		let rndNum = Math.floor(Math.random()*2000)+1; // There are mp3 files from 0001 to 2000
+		let rndNumString = rndNum.toString();
+
+		if (rndNumString.length < 4) {
+			// Add zeros to the beginning of the string
+			rndNumString = '0'.repeat(4 - rndNumString.length).concat(rndNumString);
+		}
+
+		let mp3Url = `https://www.book2.nl/book2/${lang}/SOUND/${rndNumString}.mp3`;
+
+		disablePlayBtn();
+		showPlaySpinningWheel();
+		playURL(mp3Url, function(event) {
+			hidePlaySpinningWheel();
+			enablePlayBtn();
+		});
+	});
+}
+
+
+function disablePlayBtn() {
+	let btnEl = document.getElementById('btn-play');
+	btnEl.disabled = true;
+}
+
+function enablePlayBtn() {
+	let btnEl = document.getElementById('btn-play');
+	btnEl.disabled = false;
+}
+
+function showPlaySpinningWheel() {
+	let loadingEl = document.getElementById('btn-play-spinner');
+	loadingEl.classList.remove('collapse');
+}
+
+
+function hidePlaySpinningWheel() {
+	let loadingEl = document.getElementById('btn-play-spinner');
+	loadingEl.classList.add('collapse');
+}
+
+
+// Play sound at given URL, call callbackEnded when sound ends
+// Parameter callbackEnded is optional
+// Return reference to audio element
+// Eg. playURL('https://www.book2.nl/book2/VI/SOUND/0001.mp3')
+function playURL(url, callbackEnded) {
+
+	if (url) {
+		let audio = new Audio(url);
+		if (callbackEnded) {
+			audio.addEventListener('ended', function(event) {
+				callbackEnded(event);
+			});
+		}
+		console.debug('Play', url);
+		audio.play();
+		return audio;
+	}
+	else {
+		console.error('url cannot be null');
+	}
+}
+
+
+function initUI() {
+
+	populateLanguageSelect('slc-lang', languages);
+	setLastLanguage('slc-lang');
+	setLangSelectHandler('slc-lang');
+
+	setPlayHandler('btn-play');
+}
+
+initUI();
+</script>
