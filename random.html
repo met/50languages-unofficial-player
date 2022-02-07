@@ -17,10 +17,23 @@
 		<div class="col-1">&nbsp;</div>
 		<button id="btn-play" type="button" class="btn btn-primary btn-lg mt-2 mb-3 fs-6 col-6">Play <span id="btn-play-spinner" class="collapse spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
 	</div>
-	<div class="form-check form-switch">
-		<input id="check-autoplay" class="form-check-input" type="checkbox" role="switch">
-		<label for="check-autoplay" class="form-check-label">Auto-play</label>
+
+	<div>
+		<div class="form-check form-switch form-check-inline" title="Will play continuously. To stop switch off Auto-play.">
+			<input id="check-autoplay" class="form-check-input" type="checkbox" role="switch">
+			<label for="check-autoplay" class="form-check-label">Auto-play</label>
+		</div>
+		<div class="form-check form-switch form-check-inline" title="Show details about playing sentence.">
+			<input id="check-details" class="form-check-input" type="checkbox" role="switch" data-bs-toggle="collapse" data-bs-target="#details" aria-expanded="false" aria-controls="details">
+			<label for="check-details" class="form-check-label">Show details</label>
+		</div>
 	</div>
+</div>
+
+<div id="details" class="card collapse mt-1 mb-3 p-2">
+	<h5 class="fs-5 fw-bold">Details</h5>
+	<p>Last playing sound: language <span id="details-language">??</span>, lesson <span id="details-lesson-number">??</span>. <a id="details-text-url" target="_blank">Open lesson with text</a>. <a id="details-sound-url">Open sound file</a>.
+	</p>
 </div>
 
 <div class="mt-3 pt-3">
@@ -166,6 +179,7 @@ function playRandom() {
 
 	disablePlayBtn();
 	showPlaySpinningWheel();
+	populateDetails(lang, rndNum, mp3Url)
 	playURL(mp3Url, function(event) {
 
 		if (isAutoPlaySet()) {
@@ -176,6 +190,23 @@ function playRandom() {
 			enablePlayBtn();
 		}
 	});
+}
+
+
+function populateDetails(lang, soundId, soundUrl) {
+	document.getElementById('details-language').innerText = lang;
+	document.getElementById('details-sound-url').href = soundUrl;
+
+	let lessonId = Math.ceil(soundId / 20); // every lesson contains 20 sounds. lesson 1: 1-20, lessong 2: 21-40 ...
+	let lineInLesson = soundId % 20;
+
+
+	document.getElementById('details-lesson-number').innerText = lessonId;
+	//document.getElementById('details-line').innerText = lineInLesson;
+
+	let detailsTextUrlEl = document.getElementById('details-text-url');
+	detailsTextUrlEl.href = `https://www.50languages.com/phrasebook/lesson/en/${lang.toLowerCase()}/${lessonId}/#sn_${lineInLesson-2}`; // first two sound are number and name of lesson
+
 }
 
 function disablePlayBtn() {
@@ -193,12 +224,10 @@ function showPlaySpinningWheel() {
 	loadingEl.classList.remove('collapse');
 }
 
-
 function hidePlaySpinningWheel() {
 	let loadingEl = document.getElementById('btn-play-spinner');
 	loadingEl.classList.add('collapse');
 }
-
 
 function isAutoPlaySet() {
 	return document.getElementById("check-autoplay").checked;
