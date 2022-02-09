@@ -15,7 +15,11 @@
 	<div class="fs-6 row m-1">
 		<select id="slc-lang" class="form-select mt-2 mb-3 mr-2 fs-6 col"></select>
 		<div class="col-1">&nbsp;</div>
-		<button id="btn-play" type="button" class="btn btn-primary btn-lg mt-2 mb-3 fs-6 col-6">Play <span id="btn-play-spinner" class="collapse spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
+		<button id="btn-play" type="button" class="btn btn-primary btn-lg mt-2 mb-3 fs-6 col-2">▶️ Play new <span id="btn-play-spinner" class="collapse spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
+		<div class="col-1">&nbsp;</div>
+		<button id="btn-repeat" type="button" class="btn btn-secondary btn-lg mt-2 mb-3 fs-6 col-2">🔁 Repeat <span id="btn-repeat-spinner" class="collapse spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
+		<div class="col-1">&nbsp;</div>
+		<button id="btn-repeat-slowly" type="button" class="btn btn-secondary btn-lg mt-2 mb-3 fs-6 col-2">🐢 Repeat slowly <span id="btn-repeat-slowly-spinner" class="collapse spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
 	</div>
 
 	<div>
@@ -56,6 +60,7 @@
 
 <script>
 'use strict';
+let appState = { lastAudio: null };
 
 let languages = [
 ['AD','адыгабзэ'],
@@ -136,7 +141,7 @@ function populateLanguageSelect(selectId, languages) {
 	}
 }
 
-function setLangSelectHandler(selectId) {
+function setLanguageSelectHandler(selectId) {
 	let selectEl = document.getElementById(selectId);
 
 	selectEl.addEventListener('change', function(event) {
@@ -159,13 +164,9 @@ function setLastLanguage(selectId) {
 	}
 }
 
-function setPlayHandler(btnId) {
-	let btnEl = document.getElementById(btnId);
-	btnEl.addEventListener('click', playRandom);
-}
 
 // Play random sentence from selected language
-function playRandom() {
+function playNewRandom() {
 	let lang = document.getElementById('slc-lang').value;
 	let rndNum = Math.floor(Math.random()*2000)+1; // There are mp3 files from 0001 to 2000
 	let rndNumString = rndNum.toString();
@@ -177,60 +178,67 @@ function playRandom() {
 
 	let mp3Url = `https://www.book2.nl/book2/${lang}/SOUND/${rndNumString}.mp3`;
 
-	disablePlayBtn();
+	disableButtons();
 	showPlaySpinningWheel();
 	populateDetails(lang, rndNum, mp3Url)
-	playURL(mp3Url, function(event) {
-
+	let audio = playURL(mp3Url, function(event) {
 		if (isAutoPlaySet()) {
-			setTimeout(playRandom, 750); // continue playing after small delay
+			setTimeout(playNewRandom, 750); // continue playing after small delay
 		}
 		else {
 			hidePlaySpinningWheel();
-			enablePlayBtn();
+			enableButtons();
 		}
 	});
+
+	appState.lastAudio = audio;
 }
 
+function playRepeat() {
+	if (appState.lastAudio) {
+		let audio = appState.lastAudio;
+		disableButtons();
+		showRepeatSpinningWheel();
 
-function populateDetails(lang, soundId, soundUrl) {
-	document.getElementById('details-language').innerText = lang;
-	document.getElementById('details-sound-url').href = soundUrl;
+		function refreshGuiAfterPlayingEnds(event) {
+			hideRepeatSpinningWheel();
+			enableButtons();
+		}
 
-	let lessonId = Math.ceil(soundId / 20); // every lesson contains 20 sounds. lesson 1: 1-20, lessong 2: 21-40 ...
-	let lineInLesson = soundId % 20;
+		// This is Callback that unregister itself after being succesfully completed
+		let oneTimeCallback = function (event) {
+			refreshGuiAfterPlayingEnds(event);
+			audio.removeEventListener('ended', oneTimeCallback);
+		};
 
-
-	document.getElementById('details-lesson-number').innerText = lessonId;
-	//document.getElementById('details-line').innerText = lineInLesson;
-
-	let detailsTextUrlEl = document.getElementById('details-text-url');
-	detailsTextUrlEl.href = `https://www.50languages.com/phrasebook/lesson/en/${lang.toLowerCase()}/${lessonId}/#sn_${lineInLesson-2}`; // first two sound are number and name of lesson
-
+		audio.addEventListener('ended', oneTimeCallback);
+		audio.play();
+	}
 }
 
-function disablePlayBtn() {
-	let btnEl = document.getElementById('btn-play');
-	btnEl.disabled = true;
-}
+function playRepeatSlowly() {
 
-function enablePlayBtn() {
-	let btnEl = document.getElementById('btn-play');
-	btnEl.disabled = false;
-}
+	if (appState.lastAudio) {
+		let audio = appState.lastAudio;
+		disableButtons();
+		showRepeatSlowlySpinningWheel();
+		audio.playbackRate = 0.75;
 
-function showPlaySpinningWheel() {
-	let loadingEl = document.getElementById('btn-play-spinner');
-	loadingEl.classList.remove('collapse');
-}
+		function refreshGuiAfterPlayingEnds(event) {
+			audio.playbackRate = audio.defaultPlaybackRate;
+			hideRepeatSlowlySpinningWheel();
+			enableButtons();
+		}
 
-function hidePlaySpinningWheel() {
-	let loadingEl = document.getElementById('btn-play-spinner');
-	loadingEl.classList.add('collapse');
-}
+		// This is Callback that unregister itself after being succesfully completed
+		let oneTimeCallback = function (event) {
+			refreshGuiAfterPlayingEnds(event);
+			audio.removeEventListener('ended', oneTimeCallback);
+		};
 
-function isAutoPlaySet() {
-	return document.getElementById("check-autoplay").checked;
+		audio.addEventListener('ended', oneTimeCallback);
+		audio.play();
+	}
 }
 
 // Play sound at given URL, call callbackEnded when sound ends
@@ -238,13 +246,18 @@ function isAutoPlaySet() {
 // Return reference to audio element
 // Eg. playURL('https://www.book2.nl/book2/VI/SOUND/0001.mp3')
 function playURL(url, callbackEnded) {
-
 	if (url) {
 		let audio = new Audio(url);
+
 		if (callbackEnded) {
-			audio.addEventListener('ended', function(event) {
+
+			// This is Callback that unregister itself after being succesfully completed
+			let oneTimeCallback = function (event) {
 				callbackEnded(event);
-			});
+				audio.removeEventListener('ended', oneTimeCallback);
+			};
+
+			audio.addEventListener('ended', oneTimeCallback);
 		}
 		console.debug('Play', url);
 		audio.play();
@@ -255,14 +268,111 @@ function playURL(url, callbackEnded) {
 	}
 }
 
+function populateDetails(lang, soundId, soundUrl) {
+	document.getElementById('details-language').innerText = lang;
+	document.getElementById('details-sound-url').href = soundUrl;
+
+	let lessonId = Math.ceil(soundId / 20); // every lesson contains 20 sounds. lesson 1: 1-20, lessong 2: 21-40 ...
+	let lineInLesson = soundId % 20;
+	let userLanguage = 'en';
+
+	document.getElementById('details-lesson-number').innerText = lessonId;
+
+	let detailsTextUrlEl = document.getElementById('details-text-url');
+	detailsTextUrlEl.href = `https://www.50languages.com/phrasebook/lesson/${userLanguage}/${lang.toLowerCase()}/${lessonId}/#sn_${lineInLesson-2}`; // minus two because first two sound are number and name of the lesson
+}
+
+function disableButtons() {
+	disablePlayBtn();
+	disableRepeatBtn();
+	disableRepeatSlowlyBtn();
+}
+
+function enableButtons() {
+	enablePlayBtn();
+	enableRepeatBtn();
+	enableRepeatSlowlyBtn();
+}
+
+function disablePlayBtn() {
+	document.getElementById('btn-play').disabled = true;
+}
+
+function enablePlayBtn() {
+	document.getElementById('btn-play').disabled = false;
+}
+
+function showPlaySpinningWheel() {
+	document.getElementById('btn-play-spinner').classList.remove('collapse');
+}
+
+function hidePlaySpinningWheel() {
+	document.getElementById('btn-play-spinner').classList.add('collapse');
+}
+
+function disableRepeatBtn() {
+	document.getElementById('btn-repeat').disabled = true;
+}
+
+function enableRepeatBtn() {
+	document.getElementById('btn-repeat').disabled = false;
+}
+
+function showRepeatSpinningWheel() {
+	document.getElementById('btn-repeat-spinner').classList.remove('collapse');
+}
+
+function hideRepeatSpinningWheel() {
+	document.getElementById('btn-repeat-spinner').classList.add('collapse');
+}
+
+function disableRepeatSlowlyBtn() {
+	document.getElementById('btn-repeat-slowly').disabled = true;
+}
+
+function enableRepeatSlowlyBtn() {
+	document.getElementById('btn-repeat-slowly').disabled = false;
+}
+
+function showRepeatSlowlySpinningWheel() {
+	document.getElementById('btn-repeat-slowly-spinner').classList.remove('collapse');
+}
+
+function hideRepeatSlowlySpinningWheel() {
+	document.getElementById('btn-repeat-slowly-spinner').classList.add('collapse');
+}
+
+
+
+function isAutoPlaySet() {
+	return document.getElementById("check-autoplay").checked;
+}
 
 function initUI() {
 
+	function setPlayHandler(btnId) {
+		document.getElementById(btnId).addEventListener('click', playNewRandom);
+	}
+
+	function setRepeatHandler(btnId) {
+		document.getElementById(btnId).addEventListener('click', playRepeat);
+	}
+
+	function setRepeatSlowlyHandler(btnId) {
+		document.getElementById(btnId).addEventListener('click', playRepeatSlowly);
+	}
+
 	populateLanguageSelect('slc-lang', languages);
 	setLastLanguage('slc-lang');
-	setLangSelectHandler('slc-lang');
+	setLanguageSelectHandler('slc-lang');
 
 	setPlayHandler('btn-play');
+	setRepeatHandler('btn-repeat');
+	setRepeatSlowlyHandler('btn-repeat-slowly');
+
+	enablePlayBtn();
+	disableRepeatBtn();
+	disableRepeatSlowlyBtn();
 }
 
 initUI();
