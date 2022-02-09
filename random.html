@@ -13,13 +13,23 @@
 <div class="card container mt-1 mb-3">
 
 	<div class="fs-6 row m-1">
-		<select id="slc-lang" class="form-select mt-2 mb-3 mr-2 fs-6 col"></select>
-		<div class="col-1">&nbsp;</div>
-		<button id="btn-play" type="button" class="btn btn-primary btn-lg mt-2 mb-3 fs-6 col-2">▶️ Play new <span id="btn-play-spinner" class="collapse spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
-		<div class="col-1">&nbsp;</div>
+		<div class="col-2">
+			<label for="slc-lang">Select language to listen:</label>
+			<select id="slc-lang" class="form-select mt-2 mb-3 mr-2 fs-6"></select>
+		</div>
+		&nbsp;
+		<button id="btn-play" type="button" class="btn btn-primary btn-lg mt-2 mb-3 fs-6 col-2">▶️ New <span id="btn-play-spinner" class="collapse spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
+		&nbsp;
 		<button id="btn-repeat" type="button" class="btn btn-secondary btn-lg mt-2 mb-3 fs-6 col-2">🔁 Repeat <span id="btn-repeat-spinner" class="collapse spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
-		<div class="col-1">&nbsp;</div>
+		&nbsp;
 		<button id="btn-repeat-slowly" type="button" class="btn btn-secondary btn-lg mt-2 mb-3 fs-6 col-2">🐢 Repeat slowly <span id="btn-repeat-slowly-spinner" class="collapse spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
+		&nbsp;
+		<button id="btn-translate" type="button" class="btn btn-success btn-lg mt-2 mb-3 fs-6 col-2">🕮 Translate <span id="btn-translate-spinner" class="collapse spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
+		&nbsp;
+		<div class="col-1">
+			<label for="slc-lang-translation">Select translation:</label>
+			<select id="slc-lang-translation" class="form-select mt-2 mb-3 mr-2 fs-6"></select>
+		</div>
 	</div>
 
 	<div>
@@ -60,7 +70,7 @@
 
 <script>
 'use strict';
-let appState = { lastAudio: null };
+let appState = { lastAudio: null, lastSoundId: null };
 
 let languages = [
 ['AD','адыгабзэ'],
@@ -149,6 +159,14 @@ function setLanguageSelectHandler(selectId) {
 	});
 }
 
+function setLanguageTranslateSelectHandler(selectId) {
+	let selectEl = document.getElementById(selectId);
+
+	selectEl.addEventListener('change', function(event) {
+		localStorage.setItem('selectedLanguageTranslate', event.target.value);
+	});
+}
+
 // Load last selected language. Otherwise set default
 function setLastLanguage(selectId) {
 	const DEFAULT_LANGUAGE = 'EN';
@@ -157,26 +175,45 @@ function setLastLanguage(selectId) {
 	let lastLanguage = localStorage.getItem('selectedLanguage');
 
 	if (lastLanguage) {
-		selectEl.value = lastLanguage;		
+		selectEl.value = lastLanguage;
 	}
 	else {
 		selectEl.value = DEFAULT_LANGUAGE;
 	}
 }
 
+// Load last selected language. Otherwise set default
+function setLastTranslateLanguage(selectId) {
+	const DEFAULT_LANGUAGE = 'EN';
+	let selectEl = document.getElementById(selectId);
+
+	let lastLanguage = localStorage.getItem('selectedLanguageTranslate');
+
+	if (lastLanguage) {
+		selectEl.value = lastLanguage;
+	}
+	else {
+		selectEl.value = DEFAULT_LANGUAGE;
+	}
+}
+
+function makeUrlFromId(id, lang) {
+	let idString = id.toString();
+
+	if (idString.length < 4) {
+		// Add zeros to the beginning of the string
+		idString = '0'.repeat(4 - idString.length).concat(idString); // Want '0001' .. '2000' strings
+	}
+
+	let mp3Url = `https://www.book2.nl/book2/${lang}/SOUND/${idString}.mp3`;
+	return mp3Url;
+}
 
 // Play random sentence from selected language
 function playNewRandom() {
 	let lang = document.getElementById('slc-lang').value;
 	let rndNum = Math.floor(Math.random()*2000)+1; // There are mp3 files from 0001 to 2000
-	let rndNumString = rndNum.toString();
-
-	if (rndNumString.length < 4) {
-		// Add zeros to the beginning of the string
-		rndNumString = '0'.repeat(4 - rndNumString.length).concat(rndNumString);
-	}
-
-	let mp3Url = `https://www.book2.nl/book2/${lang}/SOUND/${rndNumString}.mp3`;
+	let mp3Url = makeUrlFromId(rndNum, lang);
 
 	disableButtons();
 	showPlaySpinningWheel();
@@ -192,6 +229,7 @@ function playNewRandom() {
 	});
 
 	appState.lastAudio = audio;
+	appState.lastSoundId = rndNum;
 }
 
 function playRepeat() {
@@ -222,7 +260,7 @@ function playRepeatSlowly() {
 		let audio = appState.lastAudio;
 		disableButtons();
 		showRepeatSlowlySpinningWheel();
-		audio.playbackRate = 0.75;
+		audio.playbackRate = 0.7;
 
 		function refreshGuiAfterPlayingEnds(event) {
 			audio.playbackRate = audio.defaultPlaybackRate;
@@ -238,6 +276,22 @@ function playRepeatSlowly() {
 
 		audio.addEventListener('ended', oneTimeCallback);
 		audio.play();
+	}
+}
+
+function playTranslate() {
+	if (appState.lastSoundId) {
+		let soundId = appState.lastSoundId;
+		let translateLang = document.getElementById('slc-lang-translation').value;
+		let mp3Url = makeUrlFromId(soundId, translateLang);
+
+		disableButtons();
+		showTranslateSpinningWheel();
+
+		let audio = playURL(mp3Url, function(event) {
+			hideTranslateSpinningWheel();
+			enableButtons();
+		});
 	}
 }
 
@@ -274,24 +328,26 @@ function populateDetails(lang, soundId, soundUrl) {
 
 	let lessonId = Math.ceil(soundId / 20); // every lesson contains 20 sounds. lesson 1: 1-20, lessong 2: 21-40 ...
 	let lineInLesson = soundId % 20;
-	let userLanguage = 'en';
+	let translationLanguage = document.getElementById('slc-lang-translation').value;
 
 	document.getElementById('details-lesson-number').innerText = lessonId;
 
 	let detailsTextUrlEl = document.getElementById('details-text-url');
-	detailsTextUrlEl.href = `https://www.50languages.com/phrasebook/lesson/${userLanguage}/${lang.toLowerCase()}/${lessonId}/#sn_${lineInLesson-2}`; // minus two because first two sound are number and name of the lesson
+	detailsTextUrlEl.href = `https://www.50languages.com/phrasebook/lesson/${translationLanguage}/${lang.toLowerCase()}/${lessonId}/#sn_${lineInLesson-2}`; // line minus two, because first two sound are number and name of the lesson
 }
 
 function disableButtons() {
 	disablePlayBtn();
 	disableRepeatBtn();
 	disableRepeatSlowlyBtn();
+	disableTranslateBtn();
 }
 
 function enableButtons() {
 	enablePlayBtn();
 	enableRepeatBtn();
 	enableRepeatSlowlyBtn();
+	enableTranslateBtn();
 }
 
 function disablePlayBtn() {
@@ -342,6 +398,21 @@ function hideRepeatSlowlySpinningWheel() {
 	document.getElementById('btn-repeat-slowly-spinner').classList.add('collapse');
 }
 
+function disableTranslateBtn() {
+	document.getElementById('btn-translate').disabled = true;
+}
+
+function enableTranslateBtn() {
+	document.getElementById('btn-translate').disabled = false;
+}
+
+function showTranslateSpinningWheel() {
+	document.getElementById('btn-translate-spinner').classList.remove('collapse');
+}
+
+function hideTranslateSpinningWheel() {
+	document.getElementById('btn-translate-spinner').classList.add('collapse');
+}
 
 
 function isAutoPlaySet() {
@@ -362,17 +433,27 @@ function initUI() {
 		document.getElementById(btnId).addEventListener('click', playRepeatSlowly);
 	}
 
+	function setTranslateHandler(btnId) {
+		document.getElementById(btnId).addEventListener('click', playTranslate);
+	}
+
 	populateLanguageSelect('slc-lang', languages);
 	setLastLanguage('slc-lang');
 	setLanguageSelectHandler('slc-lang');
 
+	populateLanguageSelect('slc-lang-translation', languages);
+	setLastTranslateLanguage('slc-lang-translation');
+	setLanguageTranslateSelectHandler('slc-lang-translation');
+
 	setPlayHandler('btn-play');
 	setRepeatHandler('btn-repeat');
 	setRepeatSlowlyHandler('btn-repeat-slowly');
+	setTranslateHandler('btn-translate');
 
 	enablePlayBtn();
 	disableRepeatBtn();
 	disableRepeatSlowlyBtn();
+	disableTranslateBtn();
 }
 
 initUI();
