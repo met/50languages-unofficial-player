@@ -347,9 +347,11 @@ function populateDetails(lang, soundId, soundUrl) {
 	document.getElementById('details-language').innerText = lang;
 	document.getElementById('details-sound-url').href = soundUrl;
 
+	let translationLanguage = document.getElementById('slc-lang-translation').value;
 	let lessonId = Math.ceil(soundId / 20); // every lesson contains 20 sounds. lesson 1: 1-20, lessong 2: 21-40 ...
 	let lineInLesson = soundId % 20;
-	let translationLanguage = document.getElementById('slc-lang-translation').value;
+
+	if (lineInLesson === 0) { lineInLesson = 20; } // Without this last line will not work (need value >=2 value)
 
 	document.getElementById('details-lesson-number').innerText = lessonId;
 
