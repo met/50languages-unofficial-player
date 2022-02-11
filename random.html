@@ -8,7 +8,7 @@
 <body class="container">
 
 <h1 class="fs-4 mt-3 mb-3">50languages unofficial player - listen to random sencentes</h1>
-<p>Choose one of 60 languages and listen to random sentences.</p>
+<p>Practice your listening skills. Choose one of 60 languages and listen to random sentences. Add translation if you want.</p>
 
 <div class="card container mt-1 mb-3">
 
@@ -18,7 +18,7 @@
 			<select id="slc-lang" class="form-select mt-2 mb-3 mr-2 fs-6"></select>
 		</div>
 		&nbsp;
-		<button id="btn-play" type="button" class="btn btn-primary btn-lg mt-2 mb-3 fs-6 col-2">▶️ New <span id="btn-play-spinner" class="collapse spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
+		<button id="btn-play" type="button" class="btn btn-primary btn-lg mt-2 mb-3 fs-6 col-2" title="Play new audio">▶️ New <span id="btn-play-spinner" class="collapse spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
 		&nbsp;
 		<button id="btn-repeat" type="button" class="btn btn-secondary btn-lg mt-2 mb-3 fs-6 col-2">🔁 Repeat <span id="btn-repeat-spinner" class="collapse spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></button>
 		&nbsp;
@@ -37,7 +37,11 @@
 			<input id="check-autoplay" class="form-check-input" type="checkbox" role="switch">
 			<label for="check-autoplay" class="form-check-label">Auto-play</label>
 		</div>
-		<div class="form-check form-switch form-check-inline" title="Show details about playing sentence.">
+		<div class="form-check form-switch form-check-inline" title="After original audio will play translation. You can select language for translation.">
+			<input id="check-play-with-translation" class="form-check-input" type="checkbox" role="switch">
+			<label for="check-play-with-translation" class="form-check-label">Play with translation</label>
+		</div>
+		<div class="form-check form-switch form-check-inline" title="Show details about playing audio.">
 			<input id="check-details" class="form-check-input" type="checkbox" role="switch" data-bs-toggle="collapse" data-bs-target="#details" aria-expanded="false" aria-controls="details">
 			<label for="check-details" class="form-check-label">Show details</label>
 		</div>
@@ -46,20 +50,20 @@
 
 <div id="details" class="card collapse mt-1 mb-3 p-2">
 	<h5 class="fs-5 fw-bold">Details</h5>
-	<p>Last playing sound: language <span id="details-language">??</span>, lesson <span id="details-lesson-number">??</span>. <a id="details-text-url" target="_blank">Open lesson with text</a>. <a id="details-sound-url">Open sound file</a>.
+	<p>Last playing audio: language <span id="details-language">??</span>, lesson <span id="details-lesson-number">??</span>. <a id="details-text-url" target="_blank">Open lesson with text</a>. <a id="details-sound-url">Open sound file</a>.
 	</p>
 </div>
 
-<div class="mt-3 pt-3">
-	<h5 class="fs-5 fw-bold">Description:</h5>
+<div class="mt-4 pt-3">
+	<h5 class="fs-6 fw-bold">Description:</h5>
 	<p>This web application is for free practice of listening to foreign languages.<br>
- 	All sound files are property of <a href="https://www.goethe-verlag.com/">Goethe Verlag GmbH</a> and <a href="https://www.50languages.com/">50Languages</a>.<br>
- 	This is unofficial application, not related to Goethe Verlag GmbH.
- 	</p>
+	Audio is property of <a href="https://www.goethe-verlag.com/">Goethe Verlag GmbH</a> and <a href="https://www.50languages.com/">50Languages</a>.<br>
+	This is unofficial application, not related to Goethe Verlag GmbH.
+	</p>
 
-	<h5 class="fs-5 fw-bold">Credits:</h5>
+	<h5 class="fs-6 fw-bold">Credits:</h5>
 	<p><a href="https://www.linkedin.com/in/hassman/">Martin Hassman</a>, programming.<br>
-	Goethe Verlag GmbH, <a href="https://www.50languages.com/">50 Languages project</a> with sound files.
+	Goethe Verlag GmbH, <a href="https://www.50languages.com/">50 Languages project</a> for audio files.
 	</p>
 </div>
 
@@ -217,15 +221,32 @@ function playNewRandom() {
 
 	disableButtons();
 	showPlaySpinningWheel();
-	populateDetails(lang, rndNum, mp3Url)
+	populateDetails(lang, rndNum, mp3Url);
+
 	let audio = playURL(mp3Url, function(event) {
-		if (isAutoPlaySet()) {
-			setTimeout(playNewRandom, 750); // continue playing after small delay
+
+		// Cleaning GUI and check for autoplay
+		function afterPlayNewRandomCallback() {
+			const DELAY_BETWEEN_AUDIOS = 750;
+
+			if (isAutoPlaySet()) {
+				setTimeout(playNewRandom, DELAY_BETWEEN_AUDIOS); // play another random audio after small delay
+			}
+			else {
+				hidePlaySpinningWheel();
+				enableButtons();
+			}
 		}
-		else {
-			hidePlaySpinningWheel();
-			enableButtons();
+
+		// Now we either call afterPlayNewRandomCallback or we play translation audio first and from the translation callback we call afterPlayNewRandomCallback
+		let translationLang = document.getElementById('slc-lang-translation').value;
+		if (isPlayWithTranslationSet() && translationLang) {
+			let mp3TranslationUrl = makeUrlFromId(rndNum, translationLang);
+			playURL(mp3TranslationUrl, afterPlayNewRandomCallback);
+		} else {
+			afterPlayNewRandomCallback();
 		}
+
 	});
 
 	appState.lastAudio = audio;
@@ -417,6 +438,10 @@ function hideTranslateSpinningWheel() {
 
 function isAutoPlaySet() {
 	return document.getElementById("check-autoplay").checked;
+}
+
+function isPlayWithTranslationSet() {
+	return document.getElementById("check-play-with-translation").checked;
 }
 
 function initUI() {
