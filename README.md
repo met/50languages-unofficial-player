@@ -1,4 +1,4 @@
-# 50languages-unofficial-player
+# 50languages unofficial player
 
 This web application is for free practice of listening to foreign languages.
 
