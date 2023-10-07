@@ -211,7 +211,7 @@ function makeUrlFromId(id, lang) {
 		idString = '0'.repeat(4 - idString.length).concat(idString); // Want '0001' .. '2000' strings
 	}
 
-	let mp3Url = `https://www.book2.nl/book2/${lang}/SOUND/${idString}.mp3`;
+	let mp3Url = `https://www.50languages.com/front_assets/sounds/${lang}/SOUND/${idString}.mp3`;
 	return mp3Url;
 }
 
@@ -358,7 +358,7 @@ function populateDetails(lang, soundId, soundUrl) {
 	document.getElementById('details-lesson-number').innerText = lessonId;
 
 	let detailsTextUrlEl = document.getElementById('details-text-url');
-	detailsTextUrlEl.href = `https://www.50languages.com/phrasebook/lesson/${translationLanguage}/${lang.toLowerCase()}/${lessonId}/#sn_${lineInLesson-2}`; // line minus two, because first two sound are number and name of the lesson
+	detailsTextUrlEl.href = `https://www.50languages.com/${translationLanguage.toLowerCase()}/learn/phrasebook-lessons/${lessonId+161}/${lang.toLowerCase()}#sn_${lineInLesson-2}`; // line minus two, because first two sound are number and name of the lesson
 }
 
 function disableButtons() {
